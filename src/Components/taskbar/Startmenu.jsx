@@ -72,7 +72,10 @@ function StartMenu({ onClose, openWindow , onShutdown }) {
 
         <MenuListItem
           onClick={() => {
-            window.open("/resume.pdf", "_blank");
+            window.open(
+              "https://drive.google.com/file/d/1URXpDA9P3lnCmK6xH60IpSBu-0vkRtf2/view?usp=sharing",
+              "_blank",
+            );
             onClose();
           }}
         >
