@@ -18,6 +18,7 @@ const icons = [
 ];
 
 const LONG_PRESS_DELAY = 500; // ms to hold before context menu opens
+const MOVE_THRESHOLD = 12; // px of finger drift still considered a "tap"
 
 function Desktop({ openWindow, wallpaperStyle }) {
   const [contextMenu, setContextMenu] = useState(null);
@@ -26,7 +27,8 @@ function Desktop({ openWindow, wallpaperStyle }) {
   );
 
   const longPressTimerRef = useRef(null);
-  const touchMovedRef = useRef(false);
+  const touchStartPosRef = useRef({ x: 0, y: 0 });
+  const longPressFiredRef = useRef(false);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -39,21 +41,29 @@ function Desktop({ openWindow, wallpaperStyle }) {
     setContextMenu({ x: e.clientX, y: e.clientY });
   };
 
+  const distanceFromStart = (touch) => {
+    const dx = touch.clientX - touchStartPosRef.current.x;
+    const dy = touch.clientY - touchStartPosRef.current.y;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
   const handleTouchStart = (e) => {
-    touchMovedRef.current = false;
     const touch = e.touches[0];
-    const { clientX, clientY } = touch;
+    touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+    longPressFiredRef.current = false;
 
     longPressTimerRef.current = setTimeout(() => {
-      if (!touchMovedRef.current) {
-        setContextMenu({ x: clientX, y: clientY });
-      }
+      longPressFiredRef.current = true;
+      setContextMenu({ x: touch.clientX, y: touch.clientY });
     }, LONG_PRESS_DELAY);
   };
 
-  const handleTouchMove = () => {
-    touchMovedRef.current = true;
-    if (longPressTimerRef.current) {
+  const handleTouchMove = (e) => {
+    const touch = e.touches[0];
+    if (
+      distanceFromStart(touch) > MOVE_THRESHOLD &&
+      longPressTimerRef.current
+    ) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
@@ -66,17 +76,24 @@ function Desktop({ openWindow, wallpaperStyle }) {
     }
   };
 
-  // Mobile convention: a single tap opens the app, same as any phone home
-  // screen. No double-tap requirement — that was desktop-only behavior
-  // that doesn't belong here.
   const handleIconTouchEnd = (id) => (e) => {
     e.preventDefault();
     e.stopPropagation();
+
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
-    if (!touchMovedRef.current) {
+
+    // If the long-press context menu already fired during this touch,
+    // don't also open the window.
+    if (longPressFiredRef.current) {
+      longPressFiredRef.current = false;
+      return;
+    }
+
+    const touch = e.changedTouches[0];
+    if (distanceFromStart(touch) <= MOVE_THRESHOLD) {
       openWindow(id);
     }
   };
@@ -95,6 +112,7 @@ function Desktop({ openWindow, wallpaperStyle }) {
         padding: isMobile ? "10px" : "16px",
         boxSizing: "border-box",
         overflow: "hidden",
+        touchAction: "manipulation",
 
         display: "grid",
         gridAutoFlow: isMobile ? "row" : "column",
