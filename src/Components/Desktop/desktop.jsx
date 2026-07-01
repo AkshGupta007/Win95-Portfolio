@@ -17,7 +17,6 @@ const icons = [
   { id: "paint", icon: "🎨", label: "Paint" },
 ];
 
-const DOUBLE_TAP_DELAY = 300;
 const LONG_PRESS_DELAY = 500; // ms to hold before context menu opens
 
 function Desktop({ openWindow, wallpaperStyle }) {
@@ -26,7 +25,6 @@ function Desktop({ openWindow, wallpaperStyle }) {
     typeof window !== "undefined" ? window.innerWidth <= 768 : false,
   );
 
-  const lastTapRef = useRef({});
   const longPressTimerRef = useRef(null);
   const touchMovedRef = useRef(false);
 
@@ -37,11 +35,10 @@ function Desktop({ openWindow, wallpaperStyle }) {
   }, []);
 
   const handleRightClick = (e) => {
-    e.preventDefault(); // block default browser menu
+    e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY });
   };
 
-  // Long-press equivalent of right-click for touch devices.
   const handleTouchStart = (e) => {
     touchMovedRef.current = false;
     const touch = e.touches[0];
@@ -54,7 +51,6 @@ function Desktop({ openWindow, wallpaperStyle }) {
     }, LONG_PRESS_DELAY);
   };
 
-  // If the finger moves, it's a scroll/drag, not a long-press — cancel it.
   const handleTouchMove = () => {
     touchMovedRef.current = true;
     if (longPressTimerRef.current) {
@@ -70,15 +66,18 @@ function Desktop({ openWindow, wallpaperStyle }) {
     }
   };
 
-  const handleIconTap = (id) => {
-    const now = Date.now();
-    const lastTap = lastTapRef.current[id] || 0;
-
-    if (now - lastTap < DOUBLE_TAP_DELAY) {
+  // Mobile convention: a single tap opens the app, same as any phone home
+  // screen. No double-tap requirement — that was desktop-only behavior
+  // that doesn't belong here.
+  const handleIconTouchEnd = (id) => (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    if (!touchMovedRef.current) {
       openWindow(id);
-      lastTapRef.current[id] = 0;
-    } else {
-      lastTapRef.current[id] = now;
     }
   };
 
@@ -116,19 +115,7 @@ function Desktop({ openWindow, wallpaperStyle }) {
           label={label}
           compact={isMobile}
           onDoubleClick={() => openWindow(id)}
-          onTouchEnd={
-            isMobile
-              ? (e) => {
-                  e.preventDefault();
-                  e.stopPropagation(); // don't let this also trigger the background's long-press cancel logic oddly
-                  if (longPressTimerRef.current) {
-                    clearTimeout(longPressTimerRef.current);
-                    longPressTimerRef.current = null;
-                  }
-                  handleIconTap(id);
-                }
-              : undefined
-          }
+          onTouchEnd={isMobile ? handleIconTouchEnd(id) : undefined}
         />
       ))}
 
