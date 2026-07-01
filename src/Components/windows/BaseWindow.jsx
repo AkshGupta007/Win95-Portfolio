@@ -45,22 +45,9 @@ function BaseWindow({
     setMaximized((current) => !current);
   };
 
-  // On mobile, windows always render near-fullscreen and centered —
-  // dragging a small fixed-width box around a phone screen is bad UX,
-  // and desktop pixel offsets (top/left) can push windows off-screen.
+  // Mobile windows now start smaller (not forced fullscreen) so dragging
+  // is actually meaningful. Maximize still goes fullscreen on any device.
   const getFrameStyle = () => {
-    if (isMobile) {
-      return {
-        position: "absolute",
-        top: "4vw",
-        left: "3vw",
-        zIndex: 10,
-        width: "94vw",
-        height: "calc(100vh - 40px - 8vw)",
-        maxHeight: "calc(100vh - 40px - 8vw)",
-      };
-    }
-
     if (maximized) {
       return {
         position: "absolute",
@@ -69,6 +56,17 @@ function BaseWindow({
         zIndex: 10,
         width: "100vw",
         height: "calc(100vh - 40px)",
+      };
+    }
+
+    if (isMobile) {
+      return {
+        position: "absolute",
+        top: "8vw",
+        left: "3vw",
+        zIndex: 10,
+        width: "90vw",
+        maxHeight: "calc(100vh - 40px - 16vw)",
       };
     }
 
@@ -82,7 +80,6 @@ function BaseWindow({
   };
 
   const frameStyle = getFrameStyle();
-  const isFullSize = isMobile || maximized;
   const buttonSize = isMobile ? "32px" : "22px";
 
   const buttonStyle = {
@@ -98,19 +95,24 @@ function BaseWindow({
       handle=".window-header"
       cancel=".window-header button"
       nodeRef={nodeRef}
-      disabled={maximized || isMobile}
+      disabled={maximized}
+      bounds="body"
     >
       <div ref={nodeRef} style={frameStyle}>
-        <Window style={{ width: "100%", height: isFullSize ? "100%" : "auto" }}>
+        <Window style={{ width: "100%", height: maximized ? "100%" : "auto" }}>
           <WindowHeader
             className="window-header"
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              cursor: isFullSize ? "default" : "grab",
+              cursor: maximized ? "default" : "grab",
               gap: "8px",
               minHeight: isMobile ? "36px" : "auto",
+              // Critical for real touch devices: without this, the browser
+              // treats the drag gesture as a page scroll/pan instead of
+              // handing it to react-draggable, so nothing visibly moves.
+              touchAction: "none",
             }}
           >
             <span
@@ -131,27 +133,20 @@ function BaseWindow({
                 marginLeft: "auto",
               }}
             >
-              {/* Maximize/minimize don't add much value once mobile already
-                  forces fullscreen, so hide them there to reduce clutter
-                  and mis-taps — keep only Close. */}
-              {!isMobile && (
-                <>
-                  <Button
-                    onClick={handleMinimize}
-                    style={buttonStyle}
-                    title="Minimize"
-                  >
-                    _
-                  </Button>
-                  <Button
-                    onClick={handleMaximize}
-                    style={buttonStyle}
-                    title={maximized ? "Restore" : "Maximize"}
-                  >
-                    {maximized ? "R" : "[]"}
-                  </Button>
-                </>
-              )}
+              <Button
+                onClick={handleMinimize}
+                style={buttonStyle}
+                title="Minimize"
+              >
+                _
+              </Button>
+              <Button
+                onClick={handleMaximize}
+                style={buttonStyle}
+                title={maximized ? "Restore" : "Maximize"}
+              >
+                {maximized ? "R" : "[]"}
+              </Button>
               <Button
                 onClick={handleClose}
                 style={{ ...buttonStyle, fontWeight: "bold" }}
@@ -164,8 +159,12 @@ function BaseWindow({
 
           <WindowContent
             style={{
-              height: isFullSize ? "calc(100% - 34px)" : "auto",
-              overflow: isFullSize ? "auto" : "visible",
+              height: maximized ? "calc(100% - 34px)" : "auto",
+              maxHeight:
+                isMobile && !maximized
+                  ? "calc(100vh - 40px - 16vw - 40px)"
+                  : undefined,
+              overflow: maximized || isMobile ? "auto" : "visible",
               WebkitOverflowScrolling: "touch",
             }}
           >
