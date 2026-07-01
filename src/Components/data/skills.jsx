@@ -7,7 +7,7 @@ const skills = [
       { name: "JavaScript", level: 85 },
       { name: "HTML / CSS", level: 90 },
       { name: "Tailwind CSS", level: 80 },
-      { name: "TypeScript", level: 70 },
+      { name: "Next.js", level: 70 },
     ],
   },
   {
@@ -16,6 +16,7 @@ const skills = [
     items: [
       { name: "Node.js", level: 75 },
       { name: "Express", level: 70 },
+      { name: "TypeScript", level: 70 },
       { name: "Python", level: 65 },
     ],
   },
