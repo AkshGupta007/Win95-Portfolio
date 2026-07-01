@@ -16,7 +16,7 @@ function isImageSource(src) {
   );
 }
 
-function DesktopIcon({ icon, label, onDoubleClick }) {
+function DesktopIcon({ icon, label, onDoubleClick, onTouchEnd, compact }) {
   const playClick = useClickSound();
   const [hover, setHover] = useState(false);
 
@@ -32,24 +32,38 @@ function DesktopIcon({ icon, label, onDoubleClick }) {
     }
   };
 
+  // Wrap the passed-in onTouchEnd so we still play the click sound
+  // and let mobile-friendly double-tap logic run from the parent.
+  const handleTouchEnd = useCallback(
+    (e) => {
+      if (typeof playClick === "function") playClick();
+      if (typeof onTouchEnd === "function") onTouchEnd(e);
+    },
+    [playClick, onTouchEnd],
+  );
+
+  const iconSize = compact ? 36 : 48;
+  const fontSize = compact ? 30 : 40;
+
   const containerStyle = {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     cursor: "pointer",
-    width: "80px",
-    padding: "8px",
+    width: compact ? "64px" : "80px",
+    padding: compact ? "6px" : "8px",
     borderRadius: "4px",
     userSelect: "none",
+    WebkitTapHighlightColor: "transparent", // removes mobile's default blue tap flash
     background: hover ? "rgba(255,255,255,0.12)" : "transparent",
     transition: "background 120ms ease",
   };
 
   const iconStyle = {
-    fontSize: "40px",
+    fontSize: `${fontSize}px`,
     lineHeight: 1,
-    width: "48px",
-    height: "48px",
+    width: `${iconSize}px`,
+    height: `${iconSize}px`,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -57,7 +71,7 @@ function DesktopIcon({ icon, label, onDoubleClick }) {
 
   const labelStyle = {
     color: "white",
-    fontSize: "12px",
+    fontSize: compact ? "10px" : "12px",
     textAlign: "center",
     marginTop: "4px",
     textShadow: "1px 1px 2px rgba(0,0,0,0.8)",
@@ -70,6 +84,7 @@ function DesktopIcon({ icon, label, onDoubleClick }) {
       tabIndex={0}
       aria-label={label}
       onDoubleClick={handleActivate}
+      onTouchEnd={handleTouchEnd}
       onKeyDown={handleKeyDown}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
@@ -86,7 +101,7 @@ function DesktopIcon({ icon, label, onDoubleClick }) {
             draggable={false}
           />
         ) : (
-          <span aria-hidden style={{ fontSize: "40px" }}>
+          <span aria-hidden style={{ fontSize: `${fontSize}px` }}>
             {icon}
           </span>
         )}
@@ -101,10 +116,14 @@ DesktopIcon.propTypes = {
   icon: PropTypes.oneOfType([PropTypes.string, PropTypes.node]).isRequired,
   label: PropTypes.string.isRequired,
   onDoubleClick: PropTypes.func,
+  onTouchEnd: PropTypes.func,
+  compact: PropTypes.bool,
 };
 
 DesktopIcon.defaultProps = {
   onDoubleClick: () => {},
+  onTouchEnd: undefined,
+  compact: false,
 };
 
 export default DesktopIcon;

@@ -1,6 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Separator, Tabs, Tab, TabBody } from "react95";
 import BaseWindow from "./BaseWindow";
+
+const MOBILE_BREAKPOINT = 768;
 
 const SKILLS = {
   Frontend: [
@@ -47,6 +49,22 @@ const STATS = [
   { num: "7.70", label: "CGPA" },
   { num: "2026", label: "Graduating" },
 ];
+
+// Shared hook so every sub-component here can react to viewport size.
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined"
+      ? window.innerWidth <= MOBILE_BREAKPOINT
+      : false,
+  );
+  useEffect(() => {
+    const handleResize = () =>
+      setIsMobile(window.innerWidth <= MOBILE_BREAKPOINT);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+  return isMobile;
+}
 
 // ── Reusable inset box ──────────────────────────────────────────────────────
 function InsetBox({ children, style }) {
@@ -141,7 +159,7 @@ function TimelineItem({ icon, title, sub, badge }) {
       >
         {icon}
       </div>
-      <div>
+      <div style={{ minWidth: 0 }}>
         <p
           style={{ fontWeight: "bold", fontSize: "11px", marginBottom: "2px" }}
         >
@@ -222,25 +240,41 @@ function ProjectCard({ icon, title, desc, tech }) {
 }
 
 // ── Contact row ─────────────────────────────────────────────────────────────
-function ContactRow({ icon, label, value, valueColor }) {
+function ContactRow({ icon, label, value, valueColor, isMobile }) {
   return (
     <div
       style={{
         display: "flex",
-        alignItems: "center",
-        gap: "10px",
+        alignItems: isMobile ? "flex-start" : "center",
+        flexDirection: isMobile ? "column" : "row",
+        gap: isMobile ? "2px" : "10px",
         padding: "5px 0",
         borderBottom: "1px dotted #aaa",
         fontSize: "11px",
       }}
     >
-      <span style={{ fontSize: "14px", width: "20px", textAlign: "center" }}>
-        {icon}
-      </span>
-      <span style={{ color: "#666", width: "65px", fontSize: "10px" }}>
-        {label}
-      </span>
-      <span style={{ fontWeight: "bold", color: valueColor || "#000080" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <span style={{ fontSize: "14px", width: "20px", textAlign: "center" }}>
+          {icon}
+        </span>
+        <span
+          style={{
+            color: "#666",
+            width: isMobile ? "auto" : "65px",
+            fontSize: "10px",
+          }}
+        >
+          {label}
+        </span>
+      </div>
+      <span
+        style={{
+          fontWeight: "bold",
+          color: valueColor || "#000080",
+          marginLeft: isMobile ? "28px" : 0,
+          wordBreak: "break-word",
+        }}
+      >
         {value}
       </span>
     </div>
@@ -250,6 +284,7 @@ function ContactRow({ icon, label, value, valueColor }) {
 // ── Main component ──────────────────────────────────────────────────────────
 function AboutWindow({ onClose, onMinimize }) {
   const [activeTab, setActiveTab] = useState(0);
+  const isMobile = useIsMobile();
 
   return (
     <BaseWindow
@@ -266,7 +301,7 @@ function AboutWindow({ onClose, onMinimize }) {
           background: "#000080",
           padding: "10px",
           display: "flex",
-          gap: "12px",
+          gap: isMobile ? "8px" : "12px",
           alignItems: "flex-start",
           marginBottom: "8px",
           border: "2px inset #808080",
@@ -274,8 +309,8 @@ function AboutWindow({ onClose, onMinimize }) {
       >
         <div
           style={{
-            width: "72px",
-            height: "72px",
+            width: isMobile ? "56px" : "72px",
+            height: isMobile ? "56px" : "72px",
             flexShrink: 0,
             background: "#008080",
             border: "2px solid",
@@ -283,13 +318,19 @@ function AboutWindow({ onClose, onMinimize }) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: "36px",
+            fontSize: isMobile ? "28px" : "36px",
           }}
         >
           👨‍💻
         </div>
-        <div>
-          <h2 style={{ margin: 0, fontSize: "17px", color: "#fff" }}>
+        <div style={{ minWidth: 0 }}>
+          <h2
+            style={{
+              margin: 0,
+              fontSize: isMobile ? "15px" : "17px",
+              color: "#fff",
+            }}
+          >
             Aksh Gupta
           </h2>
           <p style={{ margin: "3px 0", fontSize: "11px", color: "#00ffff" }}>
@@ -334,6 +375,7 @@ function AboutWindow({ onClose, onMinimize }) {
                 border: "1px solid #008000",
                 display: "inline-block",
                 animation: "blink 1.5s infinite",
+                flexShrink: 0,
               }}
             />
             <span style={{ fontSize: "10px", color: "#00ff00" }}>
@@ -344,12 +386,18 @@ function AboutWindow({ onClose, onMinimize }) {
       </div>
 
       {/* ── Stats row ── */}
-      <div style={{ display: "flex", gap: "4px", marginBottom: "8px" }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
+          gap: "4px",
+          marginBottom: "8px",
+        }}
+      >
         {STATS.map(({ num, label }) => (
           <div
             key={label}
             style={{
-              flex: 1,
               background: "#000080",
               color: "#fff",
               padding: "6px 4px",
@@ -371,12 +419,52 @@ function AboutWindow({ onClose, onMinimize }) {
       </div>
 
       {/* ── Tabs ── */}
-      <Tabs value={activeTab} onChange={(val) => setActiveTab(val)}>
-        <Tab value={0}>📋 Bio</Tab>
-        <Tab value={1}>💻 Skills</Tab>
-        <Tab value={2}>🚀 Projects</Tab>
-        <Tab value={3}>📧 Contact</Tab>
-      </Tabs>
+      {/* react95 Tabs don't wrap on narrow screens, so allow horizontal
+          scroll on mobile instead of letting them overflow/clip. */}
+      <div style={{ overflowX: isMobile ? "auto" : "visible" }}>
+        <Tabs
+          value={activeTab}
+          onChange={(val) => setActiveTab(val)}
+          style={{ flexWrap: isMobile ? "nowrap" : "wrap" }}
+        >
+          <Tab
+            value={0}
+            style={{
+              fontSize: isMobile ? "10px" : "inherit",
+              whiteSpace: "nowrap",
+            }}
+          >
+            📋 Bio
+          </Tab>
+          <Tab
+            value={1}
+            style={{
+              fontSize: isMobile ? "10px" : "inherit",
+              whiteSpace: "nowrap",
+            }}
+          >
+            💻 Skills
+          </Tab>
+          <Tab
+            value={2}
+            style={{
+              fontSize: isMobile ? "10px" : "inherit",
+              whiteSpace: "nowrap",
+            }}
+          >
+            🚀 Projects
+          </Tab>
+          <Tab
+            value={3}
+            style={{
+              fontSize: isMobile ? "10px" : "inherit",
+              whiteSpace: "nowrap",
+            }}
+          >
+            📧 Contact
+          </Tab>
+        </Tabs>
+      </div>
 
       <TabBody style={{ padding: "8px" }}>
         {/* BIO */}
@@ -445,14 +533,26 @@ function AboutWindow({ onClose, onMinimize }) {
                 icon="📧"
                 label="Email"
                 value="akshgupta593@gmail.com"
+                isMobile={isMobile}
               />
-              <ContactRow icon="📍" label="Location" value="Delhi, India" />
-              <ContactRow icon="🌐" label="Languages" value="English · Hindi" />
+              <ContactRow
+                icon="📍"
+                label="Location"
+                value="Delhi, India"
+                isMobile={isMobile}
+              />
+              <ContactRow
+                icon="🌐"
+                label="Languages"
+                value="English · Hindi"
+                isMobile={isMobile}
+              />
               <ContactRow
                 icon="💼"
                 label="Status"
                 value="Open to Roles & Internships"
                 valueColor="#008000"
+                isMobile={isMobile}
               />
             </InsetBox>
             <InsetBox>
@@ -461,16 +561,19 @@ function AboutWindow({ onClose, onMinimize }) {
                 icon="🐙"
                 label="GitHub"
                 value="github.com/AkshGupta007"
+                isMobile={isMobile}
               />
               <ContactRow
                 icon="🔗"
                 label="LinkedIn"
                 value="linkedin.com/in/akshgupta593"
+                isMobile={isMobile}
               />
               <ContactRow
                 icon="🧩"
                 label="LeetCode"
                 value="200+ problems solved"
+                isMobile={isMobile}
               />
             </InsetBox>
           </>
